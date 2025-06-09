@@ -58,6 +58,8 @@
   ),
 )
 
+#set page(footer: none)
+
 #for chapter in book-data.content [
   #heading(level: 1, outlined: true)[
     #chapter.title
