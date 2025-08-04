@@ -1,6 +1,7 @@
 import os
 import json
 import shutil
+import yaml
 from toc import parse_yaml, extract_nav, extract_title
 from download import convertHtmlToPdf
 
@@ -9,15 +10,9 @@ def get_site_url(yaml_path):
     Read the site_url from mkdocs.yml after filtering out invalid tokens.
     """
     with open(yaml_path, 'r', encoding='utf-8') as file:
-        text = file.read()\
-            .replace('!!', '__')\
-            .replace('.github.io', 'githubio')\
-            .replace('.md', '_md')\
-            .replace('.', '-')\
-            .replace('_md', '.md')\
-            .replace('githubio', '.github.io')
-    data = __import__('yaml').load(text, Loader=__import__('yaml').FullLoader)
-    return data.get("site_url", "").strip(), data
+        text = file.read()
+    data = yaml.load(text, Loader=yaml.FullLoader)
+    return data.get("site_url", "").strip()
 
 def find_info_path_for_top(sub_nav, docs_path):
     """
@@ -138,7 +133,7 @@ def generate_toc_and_export():
     base_dir = os.path.abspath(".")  # Base directory (whk folder)
     yaml_path = os.path.join(base_dir, "mkdocs.yml")
     docs_path = os.path.join(base_dir, "docs")
-    site_url, _ = get_site_url(yaml_path)
+    site_url = get_site_url(yaml_path)
 
     # Set output to current script directory
     script_dir = os.path.abspath(os.path.dirname(__file__))
