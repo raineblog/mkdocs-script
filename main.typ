@@ -1,8 +1,8 @@
-#import "@preview/min-book:1.0.0": *
-#import "@preview/numbly:0.1.0": numbly
+#import "@preview/min-book:1.2.0": book
 
 #let sans = ("Noto Sans", "Noto Sans CJK SC", "Noto Sans SC")
 #let serif = ("New Computer Modern", "Noto Serif CJK SC", "Noto Serif SC")
+
 #set text(font: serif, lang: "zh", region: "CN")
 
 #let book-data = json("toc.json")
@@ -10,13 +10,11 @@
 #show: book.with(
   title: text(font: serif, book-data.title),
   subtitle: text(font: serif, book-data.subtitle),
-  edition: 0,
-  volume: 0,
   authors: book-data.authors.join(", "),
   date: datetime.today(),
   cover: auto,
   titlepage: auto,
-  catalog: none,
+  // catalog: none,
   // errata: "暂时没有纠错内容",
   dedication: "献给佐倉杏子",
   acknowledgements: [
@@ -38,23 +36,24 @@
   part: "Chapter",
   chapter: "Detail",
   cfg: (
-    numbering-style: (
+    numbering: (
       "{1:1}\n",
       "{1:1}.{2}.",
     ),
-    page-cfg: "a4",
+    page: "a4",
     lang: "zh",
-    // lang-data: toml("assets/lang.toml"),
     justify: true,
     line-space: 0.75em,
+    line-indentfirst: 2em,
     par-margin: 1.25em,
-    first-line-indent: 2em,
     margin: (x: 15.142857142857144%, y: 8.552188552188552%),
-    font: serif,
-    // font-math: "Asana Math",
-    // font-mono: "Fira Code",
-    font-size: 11pt,
-    heading-weight: auto,
+    font-usedefaults: true,
+    cover-back: true,
+    toc-stdindent: true,
+    toc-bold: true,
+    chapter-numrestart: true,
+    two-sided: false,
+    paper-links: true,
   ),
 )
 
@@ -64,7 +63,6 @@
   #heading(level: 1, outlined: true)[
     #chapter.title
   ]
-  #context counter(heading).update((a, b) => { return (a, 0) })
   #for section in chapter.sections [
     #set page(margin: 0pt, header: none, footer: none)
     #place(dx: -1000pt, dy: -1000pt, heading(level: 2, outlined: true)[
