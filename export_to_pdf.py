@@ -40,9 +40,7 @@ def process_top_level(info, sub_nav, site_url):
                 md_path = os.path.join('docs', third_file.replace('/', os.sep))
                 third_title = extract_title(md_path)
                 pdf_path = os.path.join(first_out, second_title, third_title + ".pdf")
-                html_part = third_file.replace('.md', '/index.html')
-                html_part = html_part.replace('index/index.html', 'index.html')
-                html_url = site_url.rstrip('/') + "/" + html_part + "?export=true"
+                html_url = site_url.rstrip('/') + "/" + third_file.replace('.md', '/index.html').replace('index/index.html', 'index.html') + "?export=true"
                 pdf_tasks.append([html_url, pdf_path])
                 sections_map[second_title].append((third_title, pdf_path))
 
@@ -77,6 +75,7 @@ def process_top_level(info, sub_nav, site_url):
 
     shutil.rmtree(first_out)
     os.remove('cache/main.typ')
+    os.remove('cache/toc.json')
 
 if __name__ == "__main__":
     info = load_json('info.json')
