@@ -1,18 +1,8 @@
 import os
 import json
 import shutil
-import yaml
-from toc import parse_yaml, extract_nav, extract_title
+from toc import *
 from download import convertHtmlToPdf
-
-def get_site_url(yaml_path):
-    """
-    Read the site_url from mkdocs.yml after filtering out invalid tokens.
-    """
-    with open(yaml_path, 'r', encoding='utf-8') as file:
-        text = file.read()
-    data = yaml.load(text, Loader=yaml.FullLoader)
-    return data.get("site_url", "").strip()
 
 def find_info_path_for_top(sub_nav, docs_path):
     """
@@ -140,7 +130,7 @@ def generate_toc_and_export():
     
     print(script_dir)
 
-    nav = extract_nav(parse_yaml(yaml_path))
+    nav = get_site_nav(parse_yaml(yaml_path))
     for item in nav:
         if isinstance(item, dict):
             for top_title, sub_nav in item.items():

@@ -1,14 +1,24 @@
 import os
 import yaml
 
-def parse_yaml(file_path):
-    with open(file_path, 'r', encoding='utf-8') as file:
-        text = file.read().replace('!!', '__').replace('.md', '_md').replace('.', '-').replace('_md', '.md')
-        data = yaml.load(text, Loader=yaml.FullLoader)
+def parse_yaml(yaml_path):
+    with open(yaml_path, 'r', encoding='utf-8') as file:
+        text = file.read()
+    data = yaml.load(text, Loader=yaml.FullLoader)
     return data
 
-def extract_nav(data):
+def get_site_url(yaml_path):
+    return parse_yaml(yaml_path).get("site_url", "").strip()
+
+def get_site_nav(data):
     return data.get('nav', [])
+
+def extract_title(file_path):
+    with open(file_path, 'r', encoding='utf-8') as file:
+        for line in file:
+            if line.startswith('# '):  # 一级标题
+                return line[2:].strip()
+    return "无标题"
 
 def build_tree(nav, base_path, indent=0):
     tree = ""
@@ -24,18 +34,11 @@ def build_tree(nav, base_path, indent=0):
                 tree += " " * indent + f"📝 {item} - {title}\n"
     return tree
 
-def extract_title(file_path):
-    with open(file_path, 'r', encoding='utf-8') as file:
-        for line in file:
-            if line.startswith('# '):  # 一级标题
-                return line[2:].strip()
-    return "无标题"
-
 def main():
     yaml_path = './mkdocs.yml'
     docs_path = './docs'
     data = parse_yaml(yaml_path)
-    nav = extract_nav(data)
+    nav = get_site_nav(data)
     tree = build_tree(nav, docs_path)
     print(tree)
 
