@@ -56,5 +56,4 @@ def build_tree(nav, base_path, indent=0):
 if __name__ == "__main__":
     nav = get_site_nav()
     tree = build_tree(nav, 'docs')
-    with open('.toc', 'w', encoding='utf-8') as file:
-        file.write(tree)
+    print(tree)
