@@ -1,3 +1,4 @@
+from operator import is_
 from playwright.sync_api import sync_playwright
 import os
 
@@ -33,6 +34,16 @@ def convertHtmlToPdf(items):
 
         print("Successful!")
         browser.close()
+
+def is_download_needed(item):
+    return True
+
+def download_with_cache(tasks):
+    tasks_to_download = [item for item in tasks if is_download_needed(item)]
+    if tasks_to_download:
+        convertHtmlToPdf(tasks_to_download)
+    else:
+        print("All files are already downloaded.")
 
 def Main():
     pass

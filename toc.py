@@ -1,5 +1,6 @@
 import os
 import yaml
+import json
 
 def parse_yaml(yaml_path):
     with open(yaml_path, 'r', encoding='utf-8') as file:
@@ -7,18 +8,36 @@ def parse_yaml(yaml_path):
     data = yaml.load(text, Loader=yaml.FullLoader)
     return data
 
-def get_site_url(yaml_path):
-    return parse_yaml(yaml_path).get("site_url", "").strip()
-
-def get_site_nav(data):
-    return data.get('nav', [])
-
 def extract_title(file_path):
     with open(file_path, 'r', encoding='utf-8') as file:
         for line in file:
             if line.startswith('# '):  # 一级标题
                 return line[2:].strip()
     return "无标题"
+
+def load_json(file_path):
+    with open(file_path, 'r', encoding='utf-8') as file:
+        data = json.load(file)
+    return data
+
+def write_json(file_path, data):
+    with open(file_path, 'w', encoding='utf-8') as file:
+        json.dump(data, file, ensure_ascii=False, indent=4)
+
+def get_site_nav():
+    nav = load_json('info.json')['nav']
+    return [
+        {
+            '简介': [
+                'index.md',
+                'intro/format.md',
+                'intro/usage.md',
+                'intro/discussion.md',
+                'intro/setting.md',
+                'madoka.md'
+            ]
+        }
+    ] + [{item['title']: item['children']} for item in nav]
 
 def build_tree(nav, base_path, indent=0):
     tree = ""
@@ -34,13 +53,8 @@ def build_tree(nav, base_path, indent=0):
                 tree += " " * indent + f"📝 {item} - {title}\n"
     return tree
 
-def main():
-    yaml_path = './mkdocs.yml'
-    docs_path = './docs'
-    data = parse_yaml(yaml_path)
-    nav = get_site_nav(data)
-    tree = build_tree(nav, docs_path)
-    print(tree)
-
 if __name__ == "__main__":
-    main()
+    nav = get_site_nav()
+    tree = build_tree(nav, 'docs')
+    with open('.toc', 'w', encoding='utf-8') as file:
+        file.write(tree)
