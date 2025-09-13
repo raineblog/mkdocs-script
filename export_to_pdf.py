@@ -58,7 +58,7 @@ def process_top_level(info, sub_nav, site_url):
             os.system(f"pdf2svg test.pdf {third_title}.%04d.svg all")
             os.chdir(original_dir)
             os.remove(temp_pdf)
-            svg_files = [f for f in os.listdir(pdf_dir) if f.startswith(third_title) and f.endswith('.svg')]
+            svg_files = sorted([f for f in os.listdir(pdf_dir) if f.startswith(third_title) and f.endswith('.svg')])
             section["sections"].append({
                 "title": third_title,
                 "pages": [os.path.join(first_title, second_title, svg) for svg in svg_files]
