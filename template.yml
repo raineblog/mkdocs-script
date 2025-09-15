@@ -49,6 +49,7 @@ plugins:
 -   search:
         lang: zh
         indexing: 'full'
+        min_search_length: 2
 -   minify:
         minify_html: true
         htmlmin_opts:
