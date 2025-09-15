@@ -35,7 +35,7 @@ theme:
     - content.code.select
     - content.footnote.tooltips
     include_search_page: false
-    search_index_only: true
+    search_index_only: false
     icon:
         repo: fontawesome/brands/github
         edit: material/pencil
@@ -45,8 +45,10 @@ theme:
         code: Fira Code
 plugins:
 - glightbox
-- search
 - table-reader
+-   search:
+        lang: zh
+        indexing: 'full'
 -   minify:
         minify_html: true
         htmlmin_opts:
@@ -84,7 +86,6 @@ markdown_extensions:
         permalink: true
 -   pymdownx.arithmatex:
         generic: true
-- pymdownx.details
 - pymdownx.caret
 - pymdownx.keys
 - pymdownx.mark
