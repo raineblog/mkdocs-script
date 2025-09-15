@@ -35,7 +35,7 @@ theme:
     - content.code.select
     - content.footnote.tooltips
     include_search_page: false
-    search_index_only: 'false'
+    search_index_only: true
     icon:
         repo: fontawesome/brands/github
         edit: material/pencil
