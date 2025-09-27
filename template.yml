@@ -25,7 +25,6 @@ theme:
     - navigation.tabs.sticky
     - navigation.prune
     - navigation.path
-    - search.suggest
     - search.highlight
     - search.share
     - announce.dismiss
