@@ -66,6 +66,7 @@ extra_javascript:
 - assets/katex/contrib/mhchem.min.js
 - assets/katex/contrib/auto-render.min.js
 - assets/katex/contrib/copy-tex.min.js
+- assets/mermaid/mermaid.min.js
 - assets/javascripts/custom.js
 extra_css:
 - assets/stylesheets/extra.css
