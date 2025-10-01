@@ -58,10 +58,9 @@ def pdf_worker(worker_id: int, task_queue: queue.Queue):
         browser.close()
         print(f"[Worker-{worker_id}] 关闭浏览器，任务完成。")
 
-
-def convertHtmlToPdf(url_list, max_threads: int = 8):
+def convertHtmlToPdf(url_list, max_threads: int = 4):
     print(f"--- 任务开始: 共 {len(url_list)} 个 URL，最大并发数 {max_threads} ---")
-    
+
     # 创建一个线程安全的队列来存放所有任务
     task_queue = queue.Queue()
     for item in url_list:
