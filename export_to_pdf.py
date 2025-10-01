@@ -44,7 +44,7 @@ def process_top_level(info, sub_nav, site_url):
                 pdf_tasks.append([html_url, pdf_path])
                 sections_map[second_title].append((third_title, pdf_path))
 
-    download.download_with_cache(pdf_tasks)
+    download.convertHtmlToPdf(pdf_tasks)
 
     original_dir = os.getcwd()
 
