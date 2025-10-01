@@ -1,141 +1,91 @@
-import sys
 import os
-from collections import deque
+import queue
+import concurrent.futures
+from playwright.sync_api import sync_playwright
 
-from PySide6.QtCore import QCoreApplication, QUrl, Slot, QMarginsF
-from PySide6.QtGui import QPageLayout, QPageSize
-from PySide6.QtWidgets import QApplication
-from PySide6.QtWebEngineCore import QWebEngineSettings, QWebEnginePage, QWebEngineProfile
-from PySide6.QtWebEngineWidgets import QWebEngineView
+def pdf_worker(worker_id: int, task_queue: queue.Queue):
+    print(f"[Worker-{worker_id}] 启动")
 
-class SilentWebEnginePage(QWebEnginePage):
-    """A custom QWebEnginePage that suppresses JavaScript console messages."""
-    def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
-        pass
-
-class ConversionManager:
-    """
-    在主线程中管理多个网页到PDF的转换任务。
-    利用一个固定大小的工作池来重用QWebEngineView实例，以实现最佳缓存效果。
-    """
-    def __init__(self, url_list, max_concurrent_jobs: int = 6):
-        self.tasks = deque(url_list)
-        self.max_concurrent_jobs = max_concurrent_jobs
+    # 在线程内部初始化 Playwright
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        context = browser.new_context()
         
-        # --- MODIFICATION 2: Setup a persistent profile for caching ---
-        # 使用一个独立的、持久化的配置文件，而不是默认的
-        self.profile = QWebEngineProfile("PersistentProfile")
-        cache_dir = "web_cache"
-        if not os.path.exists(cache_dir):
-            os.makedirs(cache_dir)
-        self.profile.setCachePath(cache_dir)
-        self.profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.AllowPersistentCookies)
-        self.profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.DiskHttpCache)
-        print(f"浏览器缓存目录设置为: {os.path.abspath(cache_dir)}")
+        # 持续从队列中获取任务，直到收到 "None" 这个哨兵信号
+        while True:
+            try:
+                # 从队列中获取一个任务，如果队列为空则阻塞等待
+                task = task_queue.get()
+                
+                # 收到哨兵信号，表示所有任务已完成，可以退出循环
+                if task is None:
+                    break
 
-        # --- MODIFICATION 3: Create a reusable worker pool ---
-        self.idle_workers = []
-        self.active_workers = {}  # Maps a view (worker) to its current output_path
+                url, filename = task
+                print(f"[Worker-{worker_id}] 开始处理: {url}")
 
-        for i in range(self.max_concurrent_jobs):
-            view = QWebEngineView()
-            # 为每个视图设置使用我们共享配置文件的页面
-            page = SilentWebEnginePage(self.profile, view)
-            view.setPage(page)
-            view.settings().setAttribute(QWebEngineSettings.WebAttribute.PrintElementBackgrounds, True)
-            
-            # 信号只需连接一次，使用lambda传递view实例
-            view.loadFinished.connect(lambda ok, v=view: self._on_load_finished(ok, v))
-            page.pdfPrintingFinished.connect(lambda path, ok, v=view: self._on_pdf_printed(path, ok, v))
-            
-            self.idle_workers.append(view)
+                page = None
+                try:
+                    page = context.new_page()
+                    page.goto(url, wait_until="networkidle")
+                    
+                    page.pdf(
+                        path=filename,
+                        format="A4",
+                        margin={
+                            "top": "25.5mm",
+                            "bottom": "25.5mm",
+                            "left": "19mm",
+                            "right": "19mm"
+                        },
+                        print_background=True,
+                    )
+                    print(f"[Worker-{worker_id}] 成功创建文件: {filename}")
+                except Exception as e:
+                    print(f"[Worker-{worker_id}] 错误: 处理 {url} 失败: {e}")
+                finally:
+                    if page:
+                        page.close()
+                    # 标记任务完成
+                    task_queue.task_done()
 
-        # 定义页面布局和边距 (单位: 毫米)
-        margins = QMarginsF(19, 25.5, 19, 25.5)
-        self.page_layout = QPageLayout(
-            QPageSize(QPageSize.PageSizeId.A4),
-            QPageLayout.Orientation.Portrait,
-            margins,
-            QPageLayout.Unit.Millimeter,
-        )
-        print(f"任务管理器已初始化，共有 {len(self.tasks)} 个任务，工作池大小: {len(self.idle_workers)}")
+            except Exception as e:
+                print(f"[Worker-{worker_id}] 发生严重错误: {e}")
+                # 确保即使发生意外，也能标记任务完成，避免主线程死锁
+                task_queue.task_done()
 
-    def start(self):
-        """开始处理任务队列。"""
-        self._assign_tasks_to_workers()
-
-    def _assign_tasks_to_workers(self):
-        """为所有空闲的worker分配新任务。"""
-        while self.idle_workers and self.tasks:
-            worker = self.idle_workers.pop(0)  # 从空闲池中取出一个worker
-            url, output_path = self.tasks.popleft()
-            
-            self.active_workers[worker] = output_path  # 标记为活动并记录其任务
-            
-            print(f"分配任务: {url} -> {output_path} (剩余任务: {len(self.tasks)})")
-            
-            # 确保输出目录存在
-            output_dir = os.path.dirname(output_path)
-            if output_dir and not os.path.exists(output_dir):
-                os.makedirs(output_dir)
-            
-            worker.load(QUrl(url))
-
-    # --- MODIFICATION 4: Signal handlers now manage the worker pool ---
-    @Slot(bool, QWebEngineView)
-    def _on_load_finished(self, success: bool, view: QWebEngineView):
-        output_path = self.active_workers.get(view)
-        if not output_path:
-            return  # 如果worker不在活动列表中，则忽略
-
-        if success:
-            print(f"页面加载成功: {view.url().toString()}")
-            view.page().printToPdf(output_path, self.page_layout)
-        else:
-            print(f"页面加载失败: {view.url().toString()}")
-            self._task_finished(view) # 加载失败也需释放worker
-
-    @Slot(str, bool, QWebEngineView)
-    def _on_pdf_printed(self, file_path: str, success: bool, view: QWebEngineView):
-        if success:
-            print(f"成功保存 PDF: {file_path}")
-        else:
-            print(f"保存 PDF 失败: {file_path}")
-        
-        self._task_finished(view)
-        
-    def _task_finished(self, view: QWebEngineView):
-        """一个任务完成，回收worker并尝试分配新任务。"""
-        print(f"一个任务已完成 (活动任务: {len(self.active_workers) - 1})")
-        
-        # 从活动池中移除，并归还到空闲池
-        if view in self.active_workers:
-            del self.active_workers[view]
-        self.idle_workers.append(view)
-
-        # 立即检查是否有等待的任务需要处理
-        self._assign_tasks_to_workers()
-
-        # 如果所有任务都已分配且所有worker都已空闲，则工作完成
-        if not self.tasks and not self.active_workers:
-            print("所有任务已完成。")
-            # 清理所有worker资源
-            while self.idle_workers:
-                worker = self.idle_workers.pop()
-                worker.deleteLater()
-            QCoreApplication.instance().quit()
+        # 关闭长期存在的浏览器实例
+        browser.close()
+        print(f"[Worker-{worker_id}] 关闭浏览器，任务完成。")
 
 
-def convertHtmlToPdf(url_list):
-    """将一个 URL 列表批量转换为 PDF 文件。"""
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication(sys.argv)
+def convertHtmlToPdf(url_list, max_threads: int = 8):
+    print(f"--- 任务开始: 共 {len(url_list)} 个 URL，最大并发数 {max_threads} ---")
+    
+    # 创建一个线程安全的队列来存放所有任务
+    task_queue = queue.Queue()
+    for item in url_list:
+        task_queue.put(item)
+        if os.path.exists(item[1]):
+            os.remove(item[1])
 
-    manager = ConversionManager(url_list)
-    manager.start()
+    # 使用 ThreadPoolExecutor 来管理我们的工作线程
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
+        # 启动 max_threads 个工作线程
+        # 每个工作线程都会运行 pdf_worker 函数
+        for i in range(max_threads):
+            executor.submit(pdf_worker, i, task_queue)
+    
+        # 等待队列中的所有任务都被处理完毕
+        # task_queue.join() 会阻塞，直到队列中每个 item 都被 get() 并且调用了 task_done()
+        task_queue.join()
 
-    app.exec()
+        # 所有任务处理完毕后，向队列中放入哨兵信号 (None)
+        # 以便每个工作线程都能退出其 while True 循环
+        for _ in range(max_threads):
+            task_queue.put(None)
+
+    print("--- 所有任务完成 ---")
 
 def Main():
     print("test download")
