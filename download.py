@@ -18,7 +18,7 @@ class ConversionManager:
     在主线程中管理多个网页到PDF的转换任务。
     利用一个固定大小的工作池来重用QWebEngineView实例，以实现最佳缓存效果。
     """
-    def __init__(self, url_list, max_concurrent_jobs: int = 8):
+    def __init__(self, url_list, max_concurrent_jobs: int = 4):
         self.tasks = deque(url_list)
         self.max_concurrent_jobs = max_concurrent_jobs
         
@@ -135,7 +135,7 @@ def convertHtmlToPdf(url_list):
     manager = ConversionManager(url_list)
     manager.start()
 
-    sys.exit(app.exec())
+    app.exec()
 
 def Main():
     print("test download")
