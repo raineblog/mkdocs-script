@@ -5,26 +5,50 @@ from collections import deque
 from PySide6.QtCore import QCoreApplication, QUrl, Slot, QMarginsF
 from PySide6.QtGui import QPageLayout, QPageSize
 from PySide6.QtWidgets import QApplication
-from PySide6.QtWebEngineCore import QWebEngineSettings
+from PySide6.QtWebEngineCore import QWebEngineSettings, QWebEnginePage, QWebEngineProfile
 from PySide6.QtWebEngineWidgets import QWebEngineView
+
+class SilentWebEnginePage(QWebEnginePage):
+    """A custom QWebEnginePage that suppresses JavaScript console messages."""
+    def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
+        pass
 
 class ConversionManager:
     """
     在主线程中管理多个网页到PDF的转换任务。
-    利用Qt的事件循环实现异步并发。
+    利用一个固定大小的工作池来重用QWebEngineView实例，以实现最佳缓存效果。
     """
     def __init__(self, url_list, max_concurrent_jobs: int = 8):
-        """
-        初始化转换管理器。
-
-        Args:
-            url_list (List[Tuple[str, str]]): 一个包含 (URL, 输出文件名) 元组的列表。
-            max_concurrent_jobs (int): 最大并发任务数。
-        """
-        self.tasks = deque(url_list)  # 使用双端队列，方便地从左侧弹出任务
+        self.tasks = deque(url_list)
         self.max_concurrent_jobs = max_concurrent_jobs
-        self.active_jobs = 0
-        self.active_views = [] # 持有对视图的引用，防止被垃圾回收
+        
+        # --- MODIFICATION 2: Setup a persistent profile for caching ---
+        # 使用一个独立的、持久化的配置文件，而不是默认的
+        self.profile = QWebEngineProfile("PersistentProfile")
+        cache_dir = "web_cache"
+        if not os.path.exists(cache_dir):
+            os.makedirs(cache_dir)
+        self.profile.setCachePath(cache_dir)
+        self.profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.AllowPersistentCookies)
+        self.profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.DiskHttpCache)
+        print(f"浏览器缓存目录设置为: {os.path.abspath(cache_dir)}")
+
+        # --- MODIFICATION 3: Create a reusable worker pool ---
+        self.idle_workers = []
+        self.active_workers = {}  # Maps a view (worker) to its current output_path
+
+        for i in range(self.max_concurrent_jobs):
+            view = QWebEngineView()
+            # 为每个视图设置使用我们共享配置文件的页面
+            page = SilentWebEnginePage(self.profile, view)
+            view.setPage(page)
+            view.settings().setAttribute(QWebEngineSettings.WebAttribute.PrintElementBackgrounds, True)
+            
+            # 信号只需连接一次，使用lambda传递view实例
+            view.loadFinished.connect(lambda ok, v=view: self._on_load_finished(ok, v))
+            page.pdfPrintingFinished.connect(lambda path, ok, v=view: self._on_pdf_printed(path, ok, v))
+            
+            self.idle_workers.append(view)
 
         # 定义页面布局和边距 (单位: 毫米)
         margins = QMarginsF(19, 25.5, 19, 25.5)
@@ -34,69 +58,45 @@ class ConversionManager:
             margins,
             QPageLayout.Unit.Millimeter,
         )
-        print(f"任务管理器已初始化，共有 {len(self.tasks)} 个任务，最大并发数: {self.max_concurrent_jobs}")
+        print(f"任务管理器已初始化，共有 {len(self.tasks)} 个任务，工作池大小: {len(self.idle_workers)}")
 
     def start(self):
-        """
-        开始处理任务队列。
-        """
-        # 初始启动一批任务，直到达到最大并发数
-        for _ in range(min(self.max_concurrent_jobs, len(self.tasks))):
-            self._start_next_task()
+        """开始处理任务队列。"""
+        self._assign_tasks_to_workers()
 
-    def _start_next_task(self):
-        """
-        从队列中取出一个任务并开始执行。
-        """
-        if not self.tasks:
-            return  # 队列已空
+    def _assign_tasks_to_workers(self):
+        """为所有空闲的worker分配新任务。"""
+        while self.idle_workers and self.tasks:
+            worker = self.idle_workers.pop(0)  # 从空闲池中取出一个worker
+            url, output_path = self.tasks.popleft()
+            
+            self.active_workers[worker] = output_path  # 标记为活动并记录其任务
+            
+            print(f"分配任务: {url} -> {output_path} (剩余任务: {len(self.tasks)})")
+            
+            # 确保输出目录存在
+            output_dir = os.path.dirname(output_path)
+            if output_dir and not os.path.exists(output_dir):
+                os.makedirs(output_dir)
+            
+            worker.load(QUrl(url))
 
-        url, output_path = self.tasks.popleft()
-        self.active_jobs += 1
-        
-        print(f"开始处理: {url} -> {output_path} (当前活动任务: {self.active_jobs})")
+    # --- MODIFICATION 4: Signal handlers now manage the worker pool ---
+    @Slot(bool, QWebEngineView)
+    def _on_load_finished(self, success: bool, view: QWebEngineView):
+        output_path = self.active_workers.get(view)
+        if not output_path:
+            return  # 如果worker不在活动列表中，则忽略
 
-        # 确保输出目录存在
-        output_dir = os.path.dirname(output_path)
-        if output_dir and not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
-        # 所有的GUI对象都在主线程中创建
-        view = QWebEngineView()
-        self.active_views.append(view)
-
-        # 1. 修正 Attribute Error: 使用 PrintElementBackgrounds
-        view.settings().setAttribute(
-            QWebEngineSettings.WebAttribute.PrintElementBackgrounds, True
-        )
-
-        # 使用 lambda 传递额外参数给槽函数
-        view.loadFinished.connect(
-            lambda ok, v=view, path=output_path: self._on_load_finished(ok, v, path)
-        )
-        view.load(QUrl(url))
-        
-    @Slot(bool, QWebEngineView, str)
-    def _on_load_finished(self, success: bool, view: QWebEngineView, output_path: str):
-        """
-        页面加载完成后的槽函数。
-        """
         if success:
             print(f"页面加载成功: {view.url().toString()}")
-            view.page().pdfPrintingFinished.connect(
-                lambda path, ok, v=view: self._on_pdf_printed(path, ok, v)
-            )
             view.page().printToPdf(output_path, self.page_layout)
         else:
             print(f"页面加载失败: {view.url().toString()}")
-            # 即使失败，也要减少活动任务计数并尝试下一个
-            self._task_finished(view)
+            self._task_finished(view) # 加载失败也需释放worker
 
     @Slot(str, bool, QWebEngineView)
     def _on_pdf_printed(self, file_path: str, success: bool, view: QWebEngineView):
-        """
-        PDF打印完成后的槽函数。
-        """
         if success:
             print(f"成功保存 PDF: {file_path}")
         else:
@@ -105,29 +105,29 @@ class ConversionManager:
         self._task_finished(view)
         
     def _task_finished(self, view: QWebEngineView):
-        """
-        当一个任务（无论成功与否）结束后，进行清理并启动下一个任务。
-        """
-        self.active_jobs -= 1
-        print(f"一个任务已完成 (当前活动任务: {self.active_jobs})")
+        """一个任务完成，回收worker并尝试分配新任务。"""
+        print(f"一个任务已完成 (活动任务: {len(self.active_workers) - 1})")
+        
+        # 从活动池中移除，并归还到空闲池
+        if view in self.active_workers:
+            del self.active_workers[view]
+        self.idle_workers.append(view)
 
-        # 清理视图资源
-        view.deleteLater()
-        self.active_views.remove(view)
+        # 立即检查是否有等待的任务需要处理
+        self._assign_tasks_to_workers()
 
-        # 尝试启动下一个任务
-        if self.tasks:
-            self._start_next_task()
-        elif self.active_jobs == 0:
-            # 如果队列和活动任务都为空，则所有工作完成
+        # 如果所有任务都已分配且所有worker都已空闲，则工作完成
+        if not self.tasks and not self.active_workers:
             print("所有任务已完成。")
+            # 清理所有worker资源
+            while self.idle_workers:
+                worker = self.idle_workers.pop()
+                worker.deleteLater()
             QCoreApplication.instance().quit()
 
 
 def convertHtmlToPdf(url_list):
-    """
-    将一个 URL 列表批量转换为 PDF 文件。
-    """
+    """将一个 URL 列表批量转换为 PDF 文件。"""
     app = QApplication.instance()
     if app is None:
         app = QApplication(sys.argv)
@@ -138,13 +138,13 @@ def convertHtmlToPdf(url_list):
     sys.exit(app.exec())
 
 def Main():
-    pass
-    # convertHtmlToPdf([
-    #     ["https://blog.rainppr.dns-dynamic.net/whk/science/sequence/1/", "数列 1.pdf"],
-    #     ["https://blog.rainppr.dns-dynamic.net/whk/science/sequence/2/", "数列 2.pdf"],
-    #     ["https://blog.rainppr.dns-dynamic.net/whk/science/sequence/3/", "数列 3.pdf"],
-    #     ["https://blog.rainppr.dns-dynamic.net/whk/science/sequence/4/", "数列 4.pdf"],
-    # ])
+    print("test download")
+    convertHtmlToPdf([
+        ["https://blog.rainppr.dns-dynamic.net/whk/science/sequence/1/", "数列 1.pdf"],
+        ["https://blog.rainppr.dns-dynamic.net/whk/science/sequence/2/", "数列 2.pdf"],
+        ["https://blog.rainppr.dns-dynamic.net/whk/science/sequence/3/", "数列 3.pdf"],
+        ["https://blog.rainppr.dns-dynamic.net/whk/science/sequence/4/", "数列 4.pdf"],
+    ])
 
 if __name__ == "__main__":
     Main()
