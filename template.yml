@@ -58,6 +58,10 @@ extra:
     pagetime: 'on'
     manifest: manifest.webmanifest
     githash: ''
+    giscus:
+        data_repo: raineblog/giscus
+        data_repo_id: R_kgDOMhpKmw
+        data_category_id: DIC_kwDOMhpKm84ChhZ7
 extra_javascript:
 - https://blog.rainppr.dns-dynamic.net/dist/jquery.min.js
 - https://blog.rainppr.dns-dynamic.net/dist/mermaid/mermaid.mjs
