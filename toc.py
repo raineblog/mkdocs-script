@@ -33,7 +33,6 @@ def get_site_nav():
                 'intro/format.md',
                 'intro/usage.md',
                 'intro/discussion.md',
-                'intro/setting.md',
                 'madoka.md'
             ]
         }
