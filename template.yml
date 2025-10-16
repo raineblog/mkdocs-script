@@ -40,8 +40,8 @@ theme:
         edit: material/pencil
         view: material/eye
     font:
-        text: Noto Sans SC
-        code: Fira Code
+        text: Roboto
+        code: Roboto Mono
 plugins:
 - glightbox
 - table-reader
@@ -59,18 +59,17 @@ extra:
     manifest: manifest.webmanifest
     githash: ''
 extra_javascript:
-- assets/javascripts/extra.js
 - https://blog.rainppr.dns-dynamic.net/dist/jquery.min.js
 - https://blog.rainppr.dns-dynamic.net/dist/mermaid/mermaid.mjs
 - https://blog.rainppr.dns-dynamic.net/dist/katex/katex.min.js
-- https://blog.rainppr.dns-dynamic.net/dist/contrib/mhchem.min.js
-- https://blog.rainppr.dns-dynamic.net/dist/contrib/auto-render.min.js
-- https://blog.rainppr.dns-dynamic.net/dist/contrib/copy-tex.min.js
+- https://blog.rainppr.dns-dynamic.net/dist/katex/contrib/mhchem.min.js
+- https://blog.rainppr.dns-dynamic.net/dist/katex/contrib/auto-render.min.js
+- https://blog.rainppr.dns-dynamic.net/dist/katex/contrib/copy-tex.min.js
+- assets/javascripts/katex.js
+- assets/javascripts/export.js
 - assets/javascripts/custom.js
 extra_css:
-- assets/stylesheets/extra.css
-- assets/stylesheets/all.min.css
-- https://blog.rainppr.dns-dynamic.net/dist/katex.min.css
+- https://blog.rainppr.dns-dynamic.net/dist/katex/katex.min.css
 - assets/stylesheets/custom.css
 markdown_extensions:
 - md_in_html
