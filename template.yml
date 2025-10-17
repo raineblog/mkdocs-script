@@ -55,8 +55,6 @@ plugins:
             remove_comments: true
         cache_safe: true
 extra:
-    pagetime: 'on'
-    manifest: manifest.webmanifest
     githash: ''
     giscus:
         data_repo: raineblog/giscus
