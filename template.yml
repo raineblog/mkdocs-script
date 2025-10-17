@@ -63,17 +63,18 @@ extra:
         data_repo_id: R_kgDOMhpKmw
         data_category_id: DIC_kwDOMhpKm84ChhZ7
 extra_javascript:
-- https://blog.rainppr.dns-dynamic.net/dist/jquery.min.js
-- https://blog.rainppr.dns-dynamic.net/dist/mermaid/mermaid.mjs
-- https://blog.rainppr.dns-dynamic.net/dist/katex/katex.min.js
-- https://blog.rainppr.dns-dynamic.net/dist/katex/contrib/mhchem.min.js
-- https://blog.rainppr.dns-dynamic.net/dist/katex/contrib/auto-render.min.js
-- https://blog.rainppr.dns-dynamic.net/dist/katex/contrib/copy-tex.min.js
+- assets/jquery.min.js
+- assets/mermaid/mermaid.mjs
+- assets/katex/katex.min.js
+- assets/katex/contrib/mhchem.min.js
+- assets/katex/contrib/auto-render.min.js
+- assets/katex/contrib/copy-tex.min.js
 - assets/javascripts/katex.js
 - assets/javascripts/export.js
 - assets/javascripts/custom.js
 extra_css:
-- https://blog.rainppr.dns-dynamic.net/dist/katex/katex.min.css
+- assets/katex/katex.min.css
+- assets/fonts.mkdocs.css
 - assets/stylesheets/custom.css
 markdown_extensions:
 - md_in_html
