@@ -44,7 +44,6 @@ theme:
         code: Roboto Mono
 plugins:
 - glightbox
-- table-reader
 -   search:
         lang: zh
         indexing: 'full'
