@@ -78,6 +78,7 @@ def process_top_level(info, sub_nav, site_url):
     os.remove('cache/toc.json')
 
 if __name__ == "__main__":
+    os.system('export TYPST_FONT_PATHS="./script/fonts"')
     info = load_json('info.json')
     site_url = info['project']['site_url']
     for item in info['nav']:
