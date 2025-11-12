@@ -20,11 +20,17 @@ theme:
             icon: material/weather-night
             name: 切换到亮色模式
     features:
-    - navigation.tabs
     - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.tabs
     - navigation.tabs.sticky
     - navigation.prune
-    - navigation.path
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - toc.follow
     - search.highlight
     - search.share
     - announce.dismiss
@@ -32,6 +38,7 @@ theme:
     - content.action.view
     - content.code.copy
     - content.code.select
+    - content.tooltips
     - content.footnote.tooltips
     include_search_page: false
     search_index_only: true
@@ -74,13 +81,15 @@ extra_css:
 - assets/fonts.mkdocs.css
 - assets/stylesheets/custom.css
 markdown_extensions:
-- md_in_html
+- abbr
+- admonition
 - attr_list
 - def_list
 - footnotes
-- meta
--   toc:
-        permalink: true
+- md_in_html
+- tables
+- toc:
+    permalink: true
 -   pymdownx.arithmatex:
         generic: true
 - pymdownx.caret
