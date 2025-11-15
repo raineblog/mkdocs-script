@@ -61,25 +61,10 @@ plugins:
             remove_comments: true
         cache_safe: true
 extra:
-    githash: ''
     giscus:
         data_repo: raineblog/giscus
         data_repo_id: R_kgDOMhpKmw
         data_category_id: DIC_kwDOMhpKm84ChhZ7
-extra_javascript:
-- assets/jquery.min.js
-- assets/mermaid/mermaid.mjs
-- assets/katex/katex.min.js
-- assets/katex/contrib/mhchem.min.js
-- assets/katex/contrib/auto-render.min.js
-- assets/katex/contrib/copy-tex.min.js
-- assets/javascripts/katex.js
-- assets/javascripts/export.js
-- assets/javascripts/custom.js
-extra_css:
-- assets/katex/katex.min.css
-- assets/fonts.mkdocs.css
-- assets/stylesheets/custom.css
 markdown_extensions:
 - abbr
 - admonition
