@@ -60,11 +60,6 @@ plugins:
         htmlmin_opts:
             remove_comments: true
         cache_safe: true
-extra:
-    giscus:
-        data_repo: raineblog/giscus
-        data_repo_id: R_kgDOMhpKmw
-        data_category_id: DIC_kwDOMhpKm84ChhZ7
 markdown_extensions:
 - abbr
 - admonition
